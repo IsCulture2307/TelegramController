@@ -1,0 +1,34 @@
+2025-09-07 17:28:28,411 - INFO - Scheduler started
+2025-09-07 17:28:28,411 - INFO - 🕒 后台定时任务调度器已启动
+2025-09-07 17:28:28,429 - INFO - ✅ config.json 已加载
+2025-09-07 17:29:03,631 - INFO - Connecting to 149.154.167.51:443/TcpFull...
+2025-09-07 17:29:06,063 - INFO - Connection to 149.154.167.51:443/TcpFull complete!
+2025-09-07 17:29:09,011 - INFO - Phone migrated to 5
+2025-09-07 17:29:09,011 - INFO - Reconnecting to new data center 5
+2025-09-07 17:29:09,935 - INFO - Disconnecting from 149.154.167.51:443/TcpFull...
+2025-09-07 17:29:09,969 - INFO - Disconnection from 149.154.167.51:443/TcpFull complete!
+2025-09-07 17:29:09,989 - INFO - Connecting to 91.108.56.136:443/TcpFull...
+2025-09-07 17:29:12,719 - INFO - Connection to 91.108.56.136:443/TcpFull complete!
+2025-09-07 17:29:33,377 - WARNING - Server closed the connection: 0 bytes read on a total of 8 expected bytes
+2025-09-07 17:29:33,378 - INFO - Connection closed while receiving data: 0 bytes read on a total of 8 expected bytes
+2025-09-07 17:29:33,390 - INFO - Closing current connection to begin reconnect...
+2025-09-07 17:29:33,390 - INFO - Connecting to 91.108.56.136:443/TcpFull...
+2025-09-07 17:29:33,410 - INFO - Connection to 91.108.56.136:443/TcpFull complete!
+2025-09-07 17:29:36,343 - INFO - Disconnecting from 91.108.56.136:443/TcpFull...
+2025-09-07 17:29:36,370 - INFO - Disconnection from 91.108.56.136:443/TcpFull complete!
+2025-09-07 17:29:45,443 - INFO - 🕒 (iswen) 没有发送目标，定时任务未设置
+2025-09-07 17:29:46,431 - INFO - Connecting to 91.108.56.136:443/TcpFull...
+2025-09-07 17:29:46,433 - INFO - Connection to 91.108.56.136:443/TcpFull complete!
+2025-09-07 17:29:49,707 - INFO - ✅ (iswen) 成功获取 5 个群组/频道
+2025-09-07 17:29:49,708 - INFO - Disconnecting from 91.108.56.136:443/TcpFull...
+2025-09-07 17:29:49,729 - INFO - Disconnection from 91.108.56.136:443/TcpFull complete!
+2025-09-07 17:30:27,454 - INFO - Connecting to 91.108.56.136:443/TcpFull...
+2025-09-07 17:30:27,455 - INFO - Connection to 91.108.56.136:443/TcpFull complete!
+2025-09-07 17:30:28,770 - INFO - ✅ (iswen) 已发送到 -4699251231
+2025-09-07 17:30:28,790 - INFO - Disconnecting from 91.108.56.136:443/TcpFull...
+2025-09-07 17:30:28,830 - INFO - Disconnection from 91.108.56.136:443/TcpFull complete!
+2025-09-07 17:30:31,012 - INFO - ✅ 配置已保存
+2025-09-07 17:30:47,162 - INFO - ✅ 配置已保存
+2025-09-07 17:30:49,135 - INFO - ✅ 配置已保存
+2025-09-07 17:30:49,148 - INFO - 账号 'iswen' 已退出返回账号选择菜单
+2025-09-07 17:30:51,406 - INFO - Scheduler has been shut down
