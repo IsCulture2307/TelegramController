@@ -5,7 +5,9 @@ import sys
 from PyInstaller.building.api import PYZ, EXE
 from PyInstaller.building.build_main import Analysis
 
-# 从 version.py 导入 __version__
+# 确保当前目录在系统路径中，以便正确导入version模块
+sys.path.insert(0, './')
+from version import __version__
 try:
     from version import __version__  # 尝试从 version.py 导入
 except ImportError:
@@ -14,7 +16,7 @@ except ImportError:
 main_script = 'main.py'
 
 datas = [
-    ('./session', 'session'),
+    ('./icons', 'icons'),
 ]
 
 a = Analysis(
