@@ -6,7 +6,7 @@ from utils.config import API_ID, API_HASH
 from utils.helpers import app_path
 
 
-async def send_message_to_chats(session_name, chat_ids, message_text):
+async def send_message_to_chats(session_name, chat_ids, message_text, chat_id_to_name_map : dict):
     session_folder = app_path("session")
     session_file = os.path.join(session_folder, f"{session_name}.session")
     client = TelegramClient(session_file, API_ID, API_HASH)
@@ -15,13 +15,15 @@ async def send_message_to_chats(session_name, chat_ids, message_text):
         await client.start()
         for chat_id in chat_ids:
             try:
+                chat_name = chat_id_to_name_map.get(chat_id, "未知群组")  # 使用 .get() 以防万一找不到
                 await client.send_message(chat_id, message_text)
-                logging.info(f"✅ ({session_name}) 已发送到 {chat_id}")
+                logging.info(f"✅ ({session_name}) 已发送到 {chat_id} {chat_name}")
                 sent_ids.append(chat_id)  # 记录成功
             except Exception as e:
-                logging.error(f"❌ ({session_name}) 发送到 {chat_id} 失败: {e}")
-        # **关键修改：返回成功发送的 ID 列表**
-        return True, "发送成功", sent_ids
+                logging.error(f"❌ ({session_name}) 发送到 {chat_id} {chat_name} 失败: {e}")
+        success_count = len(sent_ids)
+        total_count = len(chat_ids)
+        return True, f"发送完成: {success_count}/{total_count} 成功。", sent_ids
     except Exception as e:
         logging.error(f"❌ ({session_name}) Telegram 客户端操作失败: {e}")
         return False, f"Telegram 客户端操作失败: {e}", []
@@ -31,7 +33,8 @@ async def send_message_to_chats(session_name, chat_ids, message_text):
 
 
 async def get_group_ids_and_names(session_name):
-    session_file = os.path.join("session", f"{session_name}.session")
+    session_folder = app_path("session")
+    session_file = os.path.join(session_folder, f"{session_name}.session")
     client = TelegramClient(session_file, API_ID, API_HASH)
     try:
         await client.start()

@@ -34,6 +34,7 @@ async def update_or_create_schedule(session_name: str):
     """
     account_config = config["accounts"].get(session_name, DEFAULT_ACCOUNT_CONFIG)
     target_ids = [int(k) for k in account_config.get("target_chats", {}).keys()]
+    target_chats_map = {int(k): v for k, v in account_config.get("target_chats", {}).items()}
     job_id = f"daily_send_{session_name}"
 
     if scheduler.get_job(job_id):
@@ -42,7 +43,7 @@ async def update_or_create_schedule(session_name: str):
     if target_ids:
         async def scheduled_send_wrapper():
             logging.info(f"⏰ 定时任务触发: ({session_name})")
-            await send_message_to_chats(session_name, target_ids, account_config["message_text"])
+            await send_message_to_chats(session_name, target_ids, account_config["message_text"], target_chats_map)
 
         scheduler.add_job(
             scheduled_send_wrapper,

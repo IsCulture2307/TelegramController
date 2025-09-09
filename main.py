@@ -74,9 +74,9 @@ class App:
 
         phone, ok = QInputDialog.getText(None, f"第2步：输入手机号 ({session_name})", "请输入手机号码(+869121037658):")
         if not ok or not phone: return
-        os.makedirs("session", exist_ok=True)
-
-        session_file = os.path.join("session", f"{session_name}.session")
+        session_folder = app_path("session")
+        os.makedirs(session_folder, exist_ok=True)
+        session_file = os.path.join(session_folder, f"{session_name}.session")
         client = TelegramClient(session_file, API_ID, API_HASH)
         login_success = False
 
@@ -161,7 +161,8 @@ class App:
             self.current_panel.handle_get_groups_result(groups, error)
 
     async def send_now_task(self, session_name, ids, text):
-        success, message, sent_ids = await send_message_to_chats(session_name, ids, text)
+        chat_id_map = {int(k): v for k, v in self.current_panel.account_config["target_chats"].items()}
+        success, message, sent_ids = await send_message_to_chats(session_name, ids, text, chat_id_map)
         if self.current_panel:
             self.current_panel.handle_send_now_result(success, message, sent_ids)
 
