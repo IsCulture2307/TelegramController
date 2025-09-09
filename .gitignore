@@ -15,10 +15,10 @@ screenshot*
 *.py[cod]
 
 # Log files
-*.log
+log/
 
 # session
-*.session
+session/
 
 # .json
 *.json
