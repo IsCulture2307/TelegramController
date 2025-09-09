@@ -5,14 +5,15 @@ import re
 import sys
 import logging
 from glob import glob
+from enum import Enum
 
 # 导入 PyQt6
 from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QListWidget,
                              QPushButton, QLabel, QTextEdit, QLineEdit, QGridLayout,
                              QTabWidget, QDialog, QListWidgetItem,
-                             QMessageBox, QInputDialog, QStyle)
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QIcon
+                             QInputDialog, QStyle)
+from PyQt6.QtCore import Qt, QTimer, QSize, QByteArray
+from PyQt6.QtGui import QIcon, QRegion, QPainterPath, QPixmap
 
 # 导入 Telethon 和 APScheduler
 from telethon import TelegramClient, errors
@@ -39,7 +40,7 @@ CONFIG_FILE = "config.json"
 DEFAULT_ACCOUNT_CONFIG = {"target_chats": {}, "message_text": "这是自动群发的消息 ✅", "send_hour": 12, "send_minute": 23}
 DEFAULT_CONFIG = {"accounts": {}, "window_width": 750, "window_height": 700}
 config = {}
-
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ==== 3. 读写配置 ====
 def load_config():
@@ -166,7 +167,7 @@ class LoadingDialog(QDialog):
             QDialog {
                 background-color: #f0f0f0;
                 border: 1px solid #ababab;
-                border-radius: 5px;
+                border-radius: 8px;
             }
         """)
 
@@ -192,6 +193,171 @@ class LoadingDialog(QDialog):
         self.close()
         QApplication.processEvents()
 
+    def resizeEvent(self, event):
+        """当窗口大小改变时，自动更新窗口的圆角遮罩"""
+        super().resizeEvent(event)
+
+        border_radius = 8  # 应与你的CSS值匹配
+
+        # 创建一个 QPainterPath 对象来定义圆角矩形的形状
+        path = QPainterPath()
+
+        # 使用 path 是最精确可靠的方法
+        path.addRoundedRect(0, 0, self.width(), self.height(), border_radius, border_radius)
+
+        # 将这个 path 转换成一个 QRegion (区域)
+        mask = QRegion(path.toFillPolygon().toPolygon())
+
+        # 将这个区域设置为窗口的遮罩
+        self.setMask(mask)
+
+
+class ResultDialog(QDialog):
+    """一个自定义的、带图标和按钮的、用于替代 QMessageBox 的结果提示弹窗。"""
+
+    # 使用枚举来定义对话框的类型，让代码更清晰
+    class ResultType(Enum):
+        SUCCESS = 1
+        ERROR = 2
+        WARNING = 3
+
+    def __init__(self, dialog_type: ResultType, title: str, message: str, parent=None):
+        super().__init__(parent, Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        self.setModal(True)
+
+        self.setMaximumWidth(280)
+
+        # ---- 1. 样式和圆角遮罩 (与 LoadingDialog 完全相同) ----
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f0f0f0;
+                border: 2px solid #ababab; /* 边框可以稍粗一点更有质感 */
+                border-radius: 8px;
+            }
+        """)
+        self.border_radius = 8
+
+        # ---- 2. 构建UI布局 ----
+        # 整体垂直布局
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(25, 20, 25, 15)
+        main_layout.setSpacing(10)
+
+        # 顶部区域：图标 + 标题 (水平布局)
+        top_layout = QHBoxLayout()
+        top_layout.setSpacing(15)
+
+        # -- 图标 --
+        icon_label = QLabel()
+        style = self.style()
+        icon_size = 32  # 图标大小
+
+        if dialog_type == self.ResultType.SUCCESS:
+            icon_path = os.path.join(BASE_DIR, "icons", "success.svg")
+            color_hex = "#5cb85c"
+            fallback_icon = QStyle.StandardPixmap.SP_DialogApplyButton
+        elif dialog_type == self.ResultType.ERROR:
+            icon_path = os.path.join(BASE_DIR, "icons", "error.svg")
+            color_hex = "#d9534f"
+            fallback_icon = style.standardIcon(QStyle.StandardPixmap.SP_MessageBoxCritical)
+        else:  # WARNING
+            icon_path = os.path.join(BASE_DIR, "icons", "warning.svg")
+            color_hex = "#f0ad4e"
+            fallback_icon = QStyle.StandardPixmap.SP_MessageBoxWarning
+
+        # 优先使用我们漂亮的SVG图标
+        if os.path.exists(icon_path):
+            try:
+                # 读取SVG文件内容
+                with open(icon_path, 'r', encoding='utf-8') as f:
+                    svg_data = f.read()
+                # 直接将颜色注入SVG数据
+                colored_svg_data = svg_data.replace('stroke="currentColor"', f'stroke="{color_hex}"')
+
+                # 从修改后的SVG数据加载图标
+                icon_byte_array = QByteArray(colored_svg_data.encode('utf-8'))
+                pixmap = QPixmap()
+                pixmap.loadFromData(icon_byte_array)
+                icon = QIcon(pixmap)
+            except Exception:
+                icon = style.standardIcon(fallback_icon)
+        else:  # 如果SVG文件不存在，则回退到系统图标
+            icon = style.standardIcon(fallback_icon)
+
+        # 设置图标颜色
+        icon_label.setStyleSheet(f"color: {color_hex};")
+        # 渲染并设置pixmap
+        pixmap = icon.pixmap(QSize(icon_size, icon_size))
+        icon_label.setPixmap(pixmap)
+        top_layout.addWidget(icon_label)
+
+        # -- 标题 --
+        title_label = QLabel(title)
+        title_label.setStyleSheet("font-size: 18px; font-weight: bold;")
+        top_layout.addWidget(title_label, 1)  # 自动伸展
+
+        main_layout.addLayout(top_layout)
+
+        # -- 消息文本 --
+        self.message_label = QLabel(message)
+        self.message_label.setStyleSheet("font-size: 14px;")
+        self.message_label.setWordWrap(True)
+        self.message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        main_layout.addWidget(self.message_label)
+
+        # -- 确定按钮 --
+        self.ok_button = QPushButton("确定")
+        self.ok_button.setMinimumHeight(30)
+        self.ok_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.ok_button.setStyleSheet("""
+            QPushButton {
+                font-size: 14px;
+                background-color: #0275d8;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 5px 20px;
+            }
+            QPushButton:hover {
+                background-color: #025aa5;
+            }
+            QPushButton:pressed {
+                background-color: #014682;
+            }
+        """)
+        self.ok_button.clicked.connect(self.accept)  # 点击按钮=关闭对话框
+
+        # 让按钮靠右对齐
+        button_layout = QHBoxLayout()
+        button_layout.addStretch(1)
+        button_layout.addWidget(self.ok_button)
+        button_layout.addStretch(1)
+        main_layout.addLayout(button_layout)
+
+    # ---- 3. 圆角遮罩方法 (与 LoadingDialog 完全相同) ----
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        path = QPainterPath()
+        path.addRoundedRect(0, 0, self.width(), self.height(), self.border_radius, self.border_radius)
+        mask = QRegion(path.toFillPolygon().toPolygon())
+        self.setMask(mask)
+
+    # ---- 4. (推荐) 添加一个静态方法，让调用更简单！ ----
+    @staticmethod
+    def show_message(parent: QWidget | None, dialog_type: "ResultDialog.ResultType", title: str, message: str):
+        """静态方法，用于像 QMessageBox一样方便地显示对话框"""
+        dialog = ResultDialog(dialog_type, title, message, parent)
+        dialog.adjustSize()
+        # 将对话框居中于父窗口
+        if parent:
+            parent_rect = parent.geometry()
+            dialog.move(parent_rect.center() - dialog.rect().center())
+        else:
+            screen_geometry = QApplication.primaryScreen().geometry()
+            dialog.move(screen_geometry.center() - dialog.rect().center())
+
+        return dialog.exec()
+
 class ControlPanel(QWidget):
     def __init__(self, session_name, app_callbacks):
         super().__init__()
@@ -212,6 +378,7 @@ class ControlPanel(QWidget):
 
         self.init_ui()
         self.load_target_chats_to_listbox()
+        self.loading_dialog = LoadingDialog(self)
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
@@ -332,14 +499,14 @@ class ControlPanel(QWidget):
         self.update_selected_from_list()
         ids = [int(k) for k in self.account_config["target_chats"].keys()]
         text = self.msg_entry.toPlainText().strip()
-        if not ids: QMessageBox.warning(self, "警告", "请选择至少一个群组!"); return
-        if not text: QMessageBox.warning(self, "警告", "消息内容不能为空！"); return
+        if not ids: ResultDialog.show_message(self, ResultDialog.ResultType.WARNING, "警告", "请选择至少一个群组!"); return
+        if not text: ResultDialog.show_message(self, ResultDialog.ResultType.WARNING, "警告", "消息内容不能为空！"); return
         self.show_loading_message("🚀 正在立即发送消息")
         self.callbacks['send_now'](ids, text)
 
     def handle_get_groups_result(self, groups, error):
         self.hide_loading_message()
-        if error: QMessageBox.critical(self, "错误", error); return
+        if error: ResultDialog.show_message(self, ResultDialog.ResultType.ERROR, "错误", error); return
         self.fetched_group_info = groups
         conf_ids = {int(k) for k in self.account_config.get("target_chats", {}).keys()}
         new_data = []
@@ -347,12 +514,12 @@ class ControlPanel(QWidget):
             new_data.append((cid, cname, "(已保存)" if cid in conf_ids else "(新发现)"))
         self.group_data = sorted(new_data, key=lambda x: (x[2] != "(已保存)", x[1]))
         self.update_listbox()
-        QMessageBox.information(self, "完成", f"已获取 {len(self.fetched_group_info)} 个群组/频道")
+        ResultDialog.show_message(self, ResultDialog.ResultType.SUCCESS, "获取成功", f"已获取 {len(self.fetched_group_info)} 个群组/频道")
 
     def handle_send_now_result(self, success, message, sent_ids):
         self.hide_loading_message()
         if success:
-            QMessageBox.information(self, "发送完成", message)
+            ResultDialog.show_message(self, ResultDialog.ResultType.SUCCESS, "发送完成", message)
 
             new_target_chats = {}
 
@@ -368,11 +535,11 @@ class ControlPanel(QWidget):
             self.update_selected_from_list()
             save_config()
         else:
-            QMessageBox.critical(self, "发送失败", message)
+            ResultDialog.show_message(self, ResultDialog.ResultType.ERROR, "发送失败", message)
 
     def remove_chat(self):
         selected_items = self.list_widget.selectedItems()
-        if not selected_items: QMessageBox.warning(self, "警告", "请在列表中选择要移除的群组"); return
+        if not selected_items: ResultDialog.show_message(self, ResultDialog.ResultType.ERROR, "移除失败","请在列表中选择要移除的群组"); return
         ids_to_remove = {item.data(Qt.ItemDataRole.UserRole) for item in selected_items}
         for cid in ids_to_remove:
             self.account_config["target_chats"].pop(str(cid), None)
@@ -388,7 +555,7 @@ class ControlPanel(QWidget):
         self.update_listbox()
         self.update_selected_from_list()
         save_config()
-        QMessageBox.information(self, "成功", "已将选中的群组从“已保存”中移除")
+        ResultDialog.show_message(self, ResultDialog.ResultType.SUCCESS, "移除成功","已将选中的群组从“已保存”中移除")
 
     def save_changes(self):
         self.update_selected_from_list()
@@ -399,24 +566,17 @@ class ControlPanel(QWidget):
                 self.account_config["send_hour"], self.account_config["send_minute"] = h, m
                 save_config()
                 self.callbacks['update_schedule'](self.session_name)
-                QMessageBox.information(self, "成功", "所有配置已保存，定时任务已更新")
+                ResultDialog.show_message(self, ResultDialog.ResultType.SUCCESS, "保存成功","所有配置已保存，定时任务已更新")
             else:
-                QMessageBox.critical(self, "错误", "时间格式不正确")
+                ResultDialog.show_message(self, ResultDialog.ResultType.ERROR, "错误", "时间格式不正确")
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"保存配置失败: {e}")
+            ResultDialog.show_message(self, ResultDialog.ResultType.ERROR, "错误", f"保存配置失败: {e}")
 
     def show_loading_message(self, text):
-        if not self.loading_msg:
-            self.loading_msg = QMessageBox(self)
-            self.loading_msg.setWindowTitle("请稍候")
-            self.loading_msg.setStandardButtons(QMessageBox.StandardButton.NoButton)
-        self.loading_msg.setText(text)
-        self.loading_msg.show()
-        QApplication.processEvents()
+        self.loading_dialog.show_message(text)
 
     def hide_loading_message(self):
-        if self.loading_msg:
-            self.loading_msg.hide()
+        self.loading_dialog.close_dialog()
 
 
 # ==== 6. 主应用类，管理流程 ====
@@ -453,8 +613,8 @@ class App:
         session_name, ok = QInputDialog.getText(None, "第1步：设置别名", "请输入一个账号别名 (只能用英文和数字):")
         if not ok or not session_name: return
         session_name = session_name.strip()
-        if not re.match("^[a-zA-Z0-9_]+$", session_name): QMessageBox.critical(None, "错误", "别名不合法"); return
-        if os.path.exists(f"session/{session_name}.session"): QMessageBox.critical(None, "错误", "该别名已存在"); return
+        if not re.match("^[a-zA-Z0-9_]+$", session_name): ResultDialog.show_message(None, ResultDialog.ResultType.ERROR, "错误", "别名不合法"); return
+        if os.path.exists(f"session/{session_name}.session"): ResultDialog.show_message(None, ResultDialog.ResultType.ERROR, "错误", "该别名已存在"); return
 
         phone, ok = QInputDialog.getText(None, f"第2步：输入手机号 ({session_name})", "请输入手机号码(+869121037658):")
         if not ok or not phone: return
@@ -491,7 +651,7 @@ class App:
 
             # **关键修复 2：只有在所有步骤都完成后，才标记为成功**
             login_success = True
-            QMessageBox.information(None, "成功", f"账号 '{session_name}' 登录成功！\n\n请在您的Telegram设备上确认本人操作")
+            ResultDialog.show_message(None, ResultDialog.ResultType.SUCCESS, "成功", f"账号 '{session_name}' 登录成功！\n\n请在您的Telegram设备上确认本人操作")
 
         except InterruptedError as e:
             loading_dialog.close_dialog()
@@ -500,7 +660,7 @@ class App:
         except Exception as e:
             loading_dialog.close_dialog()
             logging.error(f"❌ 登录流程失败: {e}")
-            QMessageBox.critical(None, "验证失败", f"登录流程失败: {e}")
+            ResultDialog.show_message(None, ResultDialog.ResultType.ERROR, "验证失败", f"登录流程失败: {e}")
 
         finally:
             if client.is_connected():
@@ -562,9 +722,16 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
 
-    style = app.style()
-    icon = style.standardIcon(QStyle.StandardPixmap.SP_ComputerIcon)
-    app.setWindowIcon(icon)
+    # vvvv---- 新增应用图标设置 ----vvvv
+    app_icon_path = os.path.join(BASE_DIR, "icons", "app_icon.svg")
+    if os.path.exists(app_icon_path):
+        app.setWindowIcon(QIcon(app_icon_path))
+    else:
+        # 如果找不到自定义图标，使用一个系统默认图标
+        style = app.style()
+        icon = style.standardIcon(QStyle.StandardPixmap.SP_ComputerIcon)
+        app.setWindowIcon(icon)
+    # ^^^^---- 新增应用图标设置 ----^^^^
 
     try:
         loop = asyncio.get_running_loop()
