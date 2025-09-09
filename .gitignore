@@ -1,11 +1,11 @@
 
-TelegramController/dist/
-TelegramController/build/
-TelegramController/code2.png
-TelegramController/.cache/
-TelegramController/test/
-TelegramController/screenshot*
-TelegramController/.venv
+dist/
+build/
+code2.png
+.cache/
+test/
+screenshot*
+.venv
 
 .ipynb_checkpoints/
 # Compiled Java class files
